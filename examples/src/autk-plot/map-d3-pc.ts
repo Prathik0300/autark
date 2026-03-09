@@ -11,7 +11,7 @@ export class MapParallelCoordinates {
     protected geojson!: FeatureCollection;
 
     public async run(canvas: HTMLCanvasElement, plotDiv: HTMLElement): Promise<void> {
-        this.geojson = await fetch('http://localhost:5173/data/mnt_neighs_proj.geojson').then(res => res.json());
+        this.geojson = await fetch('/data/mnt_neighs_proj.geojson').then(res => res.json());
 
         await this.loadAutkMap(canvas);
         await this.loadAutkPlot(plotDiv);
@@ -31,6 +31,8 @@ export class MapParallelCoordinates {
     }
 
     protected async loadAutkPlot(plotDiv: HTMLElement) {
+        const plotWidth = Math.max(320, Math.floor(plotDiv.getBoundingClientRect().width));
+
         this.plot = new ParallelCoordinates({
             div: plotDiv,
             data: this.geojson,
@@ -38,7 +40,7 @@ export class MapParallelCoordinates {
                 axis: ['shape_area', 'shape_leng', 'cdta2020'], 
                 title: 'Neighborhood Characteristics' 
             },
-            width: 790,
+            width: plotWidth,
             events: [PlotEvent.BRUSH_Y]
         });
     }

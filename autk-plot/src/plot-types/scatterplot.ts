@@ -24,8 +24,8 @@ export class Scatterplot extends PlotD3   {
             .data([0])
             .join('svg')
             .attr('id', 'plot')
-            .style('width', `${this._width}`)
-            .style('height', `${this._height || '500px'}`)
+            .style('width', `${this._width}px`)
+            .style('height', `${this._height}px`)
             .style('visibility', 'visible');
 
         const node = svg.node();
@@ -68,7 +68,7 @@ export class Scatterplot extends PlotD3   {
             .join('g')
             .attr('id', 'axisX')
             .attr('class', 'x axis')
-            .attr('transform', `translate(${this._margins.left}, ${500 - this._margins.bottom})`)
+            .attr('transform', `translate(${this._margins.left}, ${this._height - this._margins.bottom})`)
             .style('visibility', 'visible');
         xAxisSelection.call(xAxis);
 
