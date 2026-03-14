@@ -26,6 +26,12 @@ export class MouseEvents {
      */
     private _status: MouseStatus;
 
+    /** Whether the mouse has actually moved during the current drag (distinguishes pan from click). */
+    private _hasMoved = false;
+
+    /** Debounce timer for emitting view change after wheel (zoom) events settle. */
+    private _viewDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
     /**
      * Constructor for MouseEvents
      * @param {AutkMap} map The map instance
@@ -73,6 +79,7 @@ export class MouseEvents {
             // left click
             this._lastPoint = [event.offsetX, event.offsetY];
             this._status = MouseStatus.MOUSE_DRAG;
+            this._hasMoved = false;
         }
     }
 
@@ -102,6 +109,7 @@ export class MouseEvents {
             }
 
             this._lastPoint = [event.offsetX, event.offsetY];
+            this._hasMoved = true;
         }
     }
 
@@ -116,6 +124,11 @@ export class MouseEvents {
 
         // changes the values
         this._status = MouseStatus.MOUSE_IDLE;
+
+        if (this._hasMoved) {
+            this._map.emitViewChange();
+            this._hasMoved = false;
+        }
     }
 
     /**
@@ -136,6 +149,14 @@ export class MouseEvents {
         const y = 1.0 - (event.clientY - rect.top) / canvas.offsetHeight;
 
         this._map.camera.zoom(event.deltaY * 0.01, x, y);
+
+        if (this._viewDebounceTimer !== null) {
+            clearTimeout(this._viewDebounceTimer);
+        }
+        this._viewDebounceTimer = setTimeout(() => {
+            this._viewDebounceTimer = null;
+            this._map.emitViewChange();
+        }, 300);
     }
 
     /**

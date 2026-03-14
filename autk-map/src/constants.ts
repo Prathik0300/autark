@@ -25,9 +25,11 @@ export enum LayerType {
 /**
  * Map events for interaction.
  * @property {string} PICK - Event triggered when a feature is picked.
+ * @property {string} VIEW - Event triggered when the camera viewport changes (zoom or pan).
  */
 export enum MapEvent {
   PICK = 'pick',
+  VIEW = 'view',
 }
 
 /**

@@ -1,5 +1,5 @@
 import { vec3, mat4 } from 'gl-matrix';
-import { ICameraData } from './interfaces';
+import { ICameraData, MapViewState } from './interfaces';
 
 /**
  * Camera class for managing the view parameters and transformations in a 3D space.
@@ -233,6 +233,18 @@ export class Camera {
         vec3.normalize(dir, dir);
 
         return dir;
+    }
+
+    /**
+     * Returns a serialisable snapshot of the current camera viewport.
+     * Can be restored exactly with resetCamera(state.up, state.lookAt, state.eye).
+     */
+    public getViewState(): MapViewState {
+        return {
+            eye: [this.wEye[0], this.wEye[1], this.wEye[2]],
+            lookAt: [this.wLookAt[0], this.wLookAt[1], this.wLookAt[2]],
+            up: [this.wUp[0], this.wUp[1], this.wUp[2]],
+        };
     }
 
     /**
