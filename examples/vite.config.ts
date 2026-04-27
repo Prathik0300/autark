@@ -30,7 +30,7 @@ export default defineConfig({
     },
   },
   server: {
-    open: '/src/autk-plot/map-d3-brush.html',
+    open: '/src/autk-provenance/all-plots-provenance.html',
     cors: {
       origin: '*',
       allowedHeaders: 'Range, Content-Type, Authorization',
