@@ -41,6 +41,12 @@ export class MapParallelCoordinates {
                 title: 'Neighborhood Characteristics' 
             },
             width: plotWidth,
+            parallelCoordinates: {
+                normalization: {
+                    mode: 'robust',
+                    quantileClamp: [0.05, 0.95],
+                },
+            },
             events: [PlotEvent.BRUSH_Y]
         });
     }

@@ -15,6 +15,7 @@
 
     /* Emit */
     "declaration": true,
+    "rootDir": "./src",
     "declarationDir": "./dist",
     "emitDeclarationOnly": true,
     "outDir": "./dist",

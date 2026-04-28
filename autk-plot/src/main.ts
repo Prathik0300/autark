@@ -1,13 +1,11 @@
-import { GeoJsonProperties } from "geojson";
-
-import { PlotConfig, PlotMargins } from "./types";
+import { PlotConfig, PlotDatum, PlotInputData, PlotMargins } from "./types";
 import { PlotEvents } from "./plot-events";
 
 export abstract class AutkPlot {
 
     protected _div!: HTMLElement;
 
-    protected _data!: GeoJsonProperties[];
+    protected _data!: PlotDatum[];
 
     protected _axis!: string[];
     protected _title!: string;
@@ -26,7 +24,7 @@ export abstract class AutkPlot {
         this._div = config.div;
         this._plotEvents = new PlotEvents(config.events);
 
-        this._data = config.data.features.map((f) => f.properties);
+        this._data = this.normalizeData(config.data);
         this._margins = config.margins || { left: 60, right: 20, top: 50, bottom: 50 };
         this._width = config.width || 800;
         this._height = config.height || 500;
@@ -35,12 +33,20 @@ export abstract class AutkPlot {
         this._title = config.labels?.title || 'Autk Plot';
     }
 
+    protected normalizeData(data: PlotInputData): PlotDatum[] {
+        if (Array.isArray(data)) {
+            return data;
+        }
 
-    get data(): GeoJsonProperties[] {
+        return data.features.map((feature) => feature.properties ?? {});
+    }
+
+
+    get data(): PlotDatum[] {
         return this._data;
     }
 
-    set data(data: GeoJsonProperties[]) {
+    set data(data: PlotDatum[]) {
         this._data = data;
     }
 
