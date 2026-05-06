@@ -31,8 +31,8 @@ export abstract class PlotD3 extends AutkPlot {
     }
 
     clickEvent(): void {
-        const svgs = d3.selectAll('.autkMark');
-        const cls = d3.selectAll('.autkClear');
+        const svgs = d3.select(this._div).selectAll('.autkMark');
+        const cls = d3.select(this._div).selectAll('.autkClear');
 
         const plot = this;
 
@@ -61,8 +61,8 @@ export abstract class PlotD3 extends AutkPlot {
     }
 
     brushEvent(): void {
-        const brushable = d3.selectAll<SVGGElement, unknown>('.autkBrushable');
-        const marksGroup = d3.selectAll<SVGGElement, unknown>('.autkMarksGroup');
+        const brushable = d3.select(this._div).selectAll<SVGGElement, unknown>('.autkBrushable');
+        const marksGroup = d3.select(this._div).selectAll<SVGGElement, unknown>('.autkMarksGroup');
 
         const plot = this;
 
@@ -105,8 +105,8 @@ export abstract class PlotD3 extends AutkPlot {
     }
 
     brushXEvent(): void {
-        const brushable = d3.selectAll<SVGGElement, unknown>('.autkBrushable');
-        const marksGroup = d3.selectAll<SVGGElement, unknown>('.autkMarksGroup');
+        const brushable = d3.select(this._div).selectAll<SVGGElement, unknown>('.autkBrushable');
+        const marksGroup = d3.select(this._div).selectAll<SVGGElement, unknown>('.autkMarksGroup');
 
         const plot = this;
 
@@ -154,8 +154,8 @@ export abstract class PlotD3 extends AutkPlot {
     }
 
     brushYEvent(): void {
-        const brushable = d3.selectAll<SVGGElement, unknown>('.autkBrushable');
-        const marksGroup = d3.selectAll<SVGGElement, unknown>('.autkMarksGroup');
+        const brushable = d3.select(this._div).selectAll<SVGGElement, unknown>('.autkBrushable');
+        const marksGroup = d3.select(this._div).selectAll<SVGGElement, unknown>('.autkMarksGroup');
 
         const plot = this;
 
@@ -205,7 +205,7 @@ export abstract class PlotD3 extends AutkPlot {
     }
 
     updatePlotSelection(): void {
-        const svgs = d3.selectAll('.autkMark');
+        const svgs = d3.select(this._div).selectAll('.autkMark');
         svgs.style('fill', (_d: unknown, id: number) => {
 
             if (this.selection.includes(id)) {
@@ -217,7 +217,7 @@ export abstract class PlotD3 extends AutkPlot {
     }
 
     // Check if node geometry intersects the brush rectangle.
-    private nodeIntersectsRect(node: SVGGeometryElement, x0: number, y0: number, x1: number, y1: number): boolean {
+    protected nodeIntersectsRect(node: SVGGeometryElement, x0: number, y0: number, x1: number, y1: number): boolean {
         const rx0 = Math.min(x0, x1);
         const rx1 = Math.max(x0, x1);
         const ry0 = Math.min(y0, y1);
@@ -243,12 +243,6 @@ export abstract class PlotD3 extends AutkPlot {
 
                 for (let i = 0; i <= steps; i++) {
                     const p = geomNode.getPointAtLength((i / steps) * total) as DOMPoint;
-                    if (i == 0 ) {
-                        console.log( {p} );
-                        console.log( {geomNode} );
-                        console.log( {x0, x1, y0, y1} );
-                    }
-                    // Check if point is inside brush rect
                     if (p.x >= rx0 && p.x <= rx1 && p.y >= ry0 && p.y <= ry1) {
                         return true;
                     }

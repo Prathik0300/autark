@@ -1,22 +1,53 @@
 /**
+ * Serialisable snapshot of the map camera viewport.
+ * Sufficient to fully restore the camera via resetCamera(state.up, state.lookAt, state.eye).
+ */
+export interface MapViewState {
+  eye: [number, number, number];
+  lookAt: [number, number, number];
+  up: [number, number, number];
+}
+
+export enum PlotType {
+  SCATTERPLOT = 'scatterplot',
+  BARCHART = 'barchart',
+  PARALLEL_COORDINATES = 'parallel_coordinates',
+  HISTOGRAM = 'histogram',
+}
+
+export interface PlotSelectionState {
+  ids: number[];
+  plotType: PlotType;
+}
+
+/**
  * Canonical state shape for autark provenance.
  * Captures everything needed to restore the current analysis state.
  */
 export interface AutarkProvenanceState {
   selection: {
     map: { layerId: string; ids: number[] } | null;
-    plot: number[];
+    /** Per-plot selection state, keyed by plotId. */
+    plots: Record<string, PlotSelectionState>;
   };
-  view?: {
-    center: [number, number];
-    zoom?: number;
-    pitch?: number;
+  ui?: {
+    mapMenuOpen?: boolean;
+    activeLayerId?: string | null;
+    visibleLayerIds?: string[];
+    thematicEnabled?: boolean;
   };
+  view?: MapViewState;
   data?: {
     workspace: string;
     layerTableNames: string[];
     activeLayerIds?: string[];
   };
+  /**
+   * Arbitrary filter / temporal state contributed by custom UI controls
+   * (e.g. month dropdowns, range sliders, dataset pickers).
+   * Keys are defined by the app via CustomControlConfig.getStateDelta.
+   */
+  filters?: Record<string, unknown>;
 }
 
 /**
@@ -25,23 +56,37 @@ export interface AutarkProvenanceState {
  */
 export enum ProvenanceAction {
   ROOT = 'root',
+  MAP_INIT = 'MAP_INIT',
   MAP_PICK = 'MAP_PICK',
   MAP_LAYER_LOAD = 'MAP_LAYER_LOAD',
   MAP_VIEW = 'MAP_VIEW',
+  MAP_UI_MENU_TOGGLE = 'MAP_UI_MENU_TOGGLE',
+  MAP_UI_VISIBLE_LAYER_TOGGLE = 'MAP_UI_VISIBLE_LAYER_TOGGLE',
+  MAP_UI_ACTIVE_LAYER_CHANGE = 'MAP_UI_ACTIVE_LAYER_CHANGE',
+  MAP_UI_THEMATIC_TOGGLE = 'MAP_UI_THEMATIC_TOGGLE',
+  PLOT_ADD = 'PLOT_ADD',
+  PLOT_REMOVE = 'PLOT_REMOVE',
   PLOT_CLICK = 'PLOT_CLICK',
   PLOT_BRUSH = 'PLOT_BRUSH',
   PLOT_BRUSH_X = 'PLOT_BRUSH_X',
   PLOT_BRUSH_Y = 'PLOT_BRUSH_Y',
   PLOT_DATA = 'PLOT_DATA',
+  MAP_UI_CUSTOM_CONTROL = 'MAP_UI_CUSTOM_CONTROL',
+  COMPUTE_RUN = 'COMPUTE_RUN',
+  DB_INIT = 'DB_INIT',
   DB_WORKSPACE = 'DB_WORKSPACE',
   DB_LOAD_OSM = 'DB_LOAD_OSM',
   DB_LOAD_CSV = 'DB_LOAD_CSV',
   DB_LOAD_JSON = 'DB_LOAD_JSON',
+  DB_LOAD_LAYER = 'DB_LOAD_LAYER',
   DB_LOAD_CUSTOM_LAYER = 'DB_LOAD_CUSTOM_LAYER',
   DB_LOAD_GRID_LAYER = 'DB_LOAD_GRID_LAYER',
+  DB_GET_LAYER = 'DB_GET_LAYER',
   DB_SPATIAL_JOIN = 'DB_SPATIAL_JOIN',
   DB_UPDATE_TABLE = 'DB_UPDATE_TABLE',
   DB_DROP_TABLE = 'DB_DROP_TABLE',
+  DB_RAW_QUERY = 'DB_RAW_QUERY',
+  DB_BUILD_HEATMAP = 'DB_BUILD_HEATMAP',
   DB_OTHER = 'DB_OTHER',
 }
 
@@ -78,16 +123,52 @@ export interface IMapForProvenance {
     addEventListener(event: string, listener: (selection: number[], layerId: string) => void): void;
     removeEventListener?(event: string, listener: (selection: number[], layerId: string) => void): void;
   };
+  /** Register a callback to be notified whenever the camera viewport changes (zoom or pan). */
+  addViewListener?(callback: (state: MapViewState) => void): void;
+  /** Unregister a viewport change callback. */
+  removeViewListener?(callback: (state: MapViewState) => void): void;
+  /** Restore the camera to a previously captured viewport state. */
+  setViewState?(state: MapViewState): void;
+  canvas: {
+    parentElement: HTMLElement | null;
+  };
+  ui?: {
+    activeLayer?: { layerInfo?: { id: string }; layerRenderInfo?: { isColorMap?: boolean } } | null;
+    changeActiveLayer?(layer: unknown): void;
+  };
+  updateRenderInfoProperty?(
+    layerName: string,
+    property: string,
+    value: unknown
+  ): void;
   layerManager: {
-    searchByLayerId(layerId: string): { setHighlightedIds(ids: number[]): void; clearHighlightedIds(): void; layerInfo?: { id: string } } | null;
-    vectorLayers?: Array<{ layerInfo?: { id: string }; setHighlightedIds(ids: number[]): void; clearHighlightedIds(): void }>;
+    searchByLayerId(layerId: string): {
+      setHighlightedIds?(ids: number[]): void;
+      clearHighlightedIds?(): void;
+      layerInfo?: { id: string };
+      layerRenderInfo?: { isSkip?: boolean; isColorMap?: boolean };
+    } | null;
+    vectorLayers?: Array<{
+      layerInfo?: { id: string };
+      setHighlightedIds?(ids: number[]): void;
+      clearHighlightedIds?(): void;
+      layerRenderInfo?: { isSkip?: boolean; isColorMap?: boolean };
+    }>;
+    rasterLayers?: Array<{
+      layerInfo?: { id: string };
+      layerRenderInfo?: { isSkip?: boolean; isColorMap?: boolean };
+    }>;
   };
 }
 
 /**
  * Minimal plot-like interface needed by PlotAdapter.
+ * Each plot must supply a stable plotId and its PlotType so that provenance
+ * state is keyed correctly and interaction labels are meaningful.
  */
 export interface IPlotForProvenance {
+  plotId: string;
+  plotType: PlotType;
   plotEvents: {
     addEventListener(event: string, listener: (selection: number[]) => void): void;
     removeEventListener?(event: string, listener: (selection: number[]) => void): void;

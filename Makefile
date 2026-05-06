@@ -1,7 +1,7 @@
 .PHONY: dev
 
 CONCURRENTLY := npx concurrently
-RIMRAF := npx rimraf
+RIMRAF := rm -rf
 
 install:
 	$(CONCURRENTLY) "cd autk-map && npm install" "cd autk-db && npm install" "cd autk-plot && npm install" "cd autk-compute && npm install" "cd autk-provenance && npm install"
@@ -18,6 +18,7 @@ build:
 		"cd autk-provenance && npm run build"
 
 dev:
+	make install
 	make install-ex
 	make build
 	$(CONCURRENTLY) \
@@ -44,13 +45,13 @@ examples:
 	$(CONCURRENTLY) "cd examples && npm run dev"
 
 clean:
-	$(CONCURRENTLY) \
-		"cd autk-map && $(RIMRAF) dist build node_modules" \
-		"cd autk-db && $(RIMRAF) dist build node_modules" \
-		"cd autk-plot && $(RIMRAF) dist build node_modules" \
-		"cd autk-compute && $(RIMRAF) dist build node_modules" \
-		"cd autk-provenance && $(RIMRAF) dist build node_modules" \
-		"cd examples && $(RIMRAF) dist build node_modules"
+	@echo "CLEAN_USING_RM_RF"
+	rm -rf autk-map/dist autk-map/build autk-map/node_modules
+	rm -rf autk-db/dist autk-db/build autk-db/node_modules
+	rm -rf autk-plot/dist autk-plot/build autk-plot/node_modules
+	rm -rf autk-compute/dist autk-compute/build autk-compute/node_modules
+	rm -rf autk-provenance/dist autk-provenance/build autk-provenance/node_modules
+	rm -rf examples/dist examples/build examples/node_modules
 
 publish:
 	@if [ -z "$(LIB)" ]; then \

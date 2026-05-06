@@ -24,8 +24,8 @@ export class Scatterplot extends PlotD3   {
             .data([0])
             .join('svg')
             .attr('id', 'plot')
-            .style('width', `${this._width}`)
-            .style('height', `${this._height || '500px'}`)
+            .style('width', `${this._width}px`)
+            .style('height', `${this._height}px`)
             .style('visibility', 'visible');
 
         const node = svg.node();
@@ -53,10 +53,10 @@ export class Scatterplot extends PlotD3   {
             .text((d) => d);
 
         // ---- Escalas
-        const xExtent = <[number, number]>d3.extent(this.data, (d) => d ? +d[this._axis[0]] || 0 : 0);
+        const xExtent = <[number, number]>d3.extent(this.data, (d) => Number(d?.[this._axis[0]] ?? 0));
         this.mapX = d3.scaleLinear().domain(xExtent).range([0, width]);
 
-        const yExtent = <[number, number]>d3.extent(this.data, (d) => d ? +d[this._axis[1]] || 0 : 0);
+        const yExtent = <[number, number]>d3.extent(this.data, (d) => Number(d?.[this._axis[1]] ?? 0));
         this.mapY = d3.scaleLinear().domain(yExtent).range([height, 0]);
 
         // ---- Eixos
@@ -68,7 +68,7 @@ export class Scatterplot extends PlotD3   {
             .join('g')
             .attr('id', 'axisX')
             .attr('class', 'x axis')
-            .attr('transform', `translate(${this._margins.left}, ${500 - this._margins.bottom})`)
+            .attr('transform', `translate(${this._margins.left}, ${this._height - this._margins.bottom})`)
             .style('visibility', 'visible');
         xAxisSelection.call(xAxis);
 
@@ -128,8 +128,8 @@ export class Scatterplot extends PlotD3   {
             .data(this.data)
             .join('circle')
             .attr('class', 'autkMark')
-            .attr('cx', (d) => this.mapX(d ? +d[this._axis[0]] || 0 : 0))
-            .attr('cy', (d) => this.mapY(d ? +d[this._axis[1]] || 0 : 0))
+            .attr('cx', (d) => this.mapX(Number(d?.[this._axis[0]] ?? 0)))
+            .attr('cy', (d) => this.mapY(Number(d?.[this._axis[1]] ?? 0)))
             .attr('r', 6)
             .style('fill', PlotStyle.default)
             .style('visibility', 'visible');

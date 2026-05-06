@@ -1,124 +1,90 @@
-import type { AutarkProvenanceState } from './types';
-import type { PathNode } from './types';
 import type { AutarkProvenanceApi } from './create-autark-provenance';
+import { ensureProvenanceTrailStyles } from './ui/styles';
+import { createGraphModalController } from './ui/graph-modal';
+import { buildLayoutFromProvenance, renderGraphPreview } from './ui/graph-preview';
+import { renderPathList } from './ui/path-list';
+import { createGraphToolbar, createInsightsShell, createNavigationButtons } from './ui/toolbar';
+import { renderInsightsPanel } from './ui/insights-panel';
 
 export interface ProvenanceTrailUIOptions {
   provenance: AutarkProvenanceApi;
   container: HTMLElement;
+  insightsContainer?: HTMLElement;
   showBackForward?: boolean;
   showTimestamps?: boolean;
-}
-
-function formatTime(ts: number): string {
-  const d = new Date(ts);
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  showGraph?: boolean;
+  showPathList?: boolean;
 }
 
 export function renderProvenanceTrailUI(options: ProvenanceTrailUIOptions): () => void {
-  const {
-    provenance,
-    container,
-    showBackForward = true,
-    showTimestamps = true,
-  } = options;
-
-  if (typeof document !== 'undefined' && document.head) {
-    const styleId = 'autk-provenance-trail-styles';
-    if (!document.getElementById(styleId)) {
-      const el = document.createElement('style');
-      el.id = styleId;
-      el.textContent = '.autk-provenance-trail{font-family:system-ui,sans-serif;font-size:13px;padding:8px}.autk-provenance-trail-path{display:flex;flex-direction:column;gap:2px;max-height:280px;overflow-y:auto}.autk-provenance-trail-item{display:flex;align-items:center;gap:8px;padding:6px 8px;cursor:pointer;border-radius:4px;border:1px solid transparent}.autk-provenance-trail-item:hover{background:rgba(0,0,0,.06)}.autk-provenance-trail-item.autk-provenance-trail-current{background:rgba(0,0,0,.08);border-color:rgba(0,0,0,.15);font-weight:600}.autk-provenance-trail-label{flex:1}.autk-provenance-trail-time{color:#666;font-size:11px}.autk-provenance-trail-buttons{display:flex;gap:6px;margin-top:8px}.autk-provenance-trail-buttons button{padding:6px 12px;cursor:pointer}.autk-provenance-trail-buttons button:disabled{opacity:.5;cursor:not-allowed}';
-      document.head.appendChild(el);
-    }
-  }
-  container.classList.add('autk-provenance-trail');
+  const { provenance, container, insightsContainer, showBackForward = true, showTimestamps = true, showGraph = true, showPathList = true } = options;
+  ensureProvenanceTrailStyles();
   container.innerHTML = '';
+  container.classList.add('autk-provenance-root');
 
-  const pathContainer = document.createElement('div');
-  pathContainer.className = 'autk-provenance-trail-path';
-  pathContainer.setAttribute('role', 'list');
-  container.appendChild(pathContainer);
+  let graphVisible = showGraph;
+  const toolbar = showGraph ? createGraphToolbar() : null;
+  const graphWrap = showGraph ? document.createElement('div') : null;
+  const pathContainer = showPathList ? document.createElement('div') : null;
+  const navigation = showBackForward ? createNavigationButtons() : null;
+  const insights = createInsightsShell(insightsContainer ?? container);
+  const modal = createGraphModalController({ provenance, showTimestamps, buildLayout: () => buildLayoutFromProvenance(provenance), onRefresh: refresh });
 
-  let backBtn: HTMLButtonElement | null = null;
-  let fwdBtn: HTMLButtonElement | null = null;
-
-  if (showBackForward) {
-    const btnRow = document.createElement('div');
-    btnRow.className = 'autk-provenance-trail-buttons';
-    backBtn = document.createElement('button');
-    backBtn.textContent = '← Back';
-    backBtn.setAttribute('aria-label', 'Go back one step');
-    fwdBtn = document.createElement('button');
-    fwdBtn.textContent = 'Forward →';
-    fwdBtn.setAttribute('aria-label', 'Go forward one step');
-    btnRow.appendChild(backBtn);
-    btnRow.appendChild(fwdBtn);
-    container.appendChild(btnRow);
-
-    backBtn.addEventListener('click', () => {
-      provenance.goBackOneStep();
-    });
-    fwdBtn.addEventListener('click', () => {
-      provenance.goForwardOneStep();
-    });
+  if (toolbar && graphWrap) {
+    graphWrap.className = 'autk-provenance-graph-wrap';
+    toolbar.toggleButton.addEventListener('click', () => { graphVisible = !graphVisible; if (!graphVisible) modal.close(); refresh(); });
+    toolbar.expandButton.addEventListener('click', () => { modal.isOpen() ? modal.close() : modal.open(); refresh(); });
+    graphWrap.addEventListener('click', () => { if (graphVisible && !modal.isOpen()) { modal.open(); refresh(); } });
+    container.appendChild(toolbar.toolbar);
+    container.appendChild(graphWrap);
   }
 
-  function updateButtons(): void {
-    if (backBtn) backBtn.disabled = !provenance.canGoBack();
-    if (fwdBtn) fwdBtn.disabled = !provenance.canGoForward();
+  if (pathContainer) {
+    pathContainer.className = 'autk-provenance-path';
+    pathContainer.setAttribute('role', 'list');
+    container.appendChild(pathContainer);
   }
-
-  function renderPath(path: PathNode<AutarkProvenanceState>[]): void {
-    pathContainer.innerHTML = '';
-    const currentId = provenance.getCurrentNode()?.id ?? null;
-
-    for (let i = 0; i < path.length; i++) {
-      const node = path[i];
-      const isCurrent = node.id === currentId;
-      const item = document.createElement('div');
-      item.className = 'autk-provenance-trail-item' + (isCurrent ? ' autk-provenance-trail-current' : '');
-      item.setAttribute('role', 'listitem');
-      item.setAttribute('data-node-id', node.id);
-
-      const labelSpan = document.createElement('span');
-      labelSpan.className = 'autk-provenance-trail-label';
-      labelSpan.textContent = node.actionLabel;
-      if (isCurrent) {
-        labelSpan.setAttribute('aria-current', 'step');
-      }
-      item.appendChild(labelSpan);
-
-      if (showTimestamps) {
-        const timeSpan = document.createElement('span');
-        timeSpan.className = 'autk-provenance-trail-time';
-        timeSpan.textContent = formatTime(node.timestamp);
-        item.appendChild(timeSpan);
-      }
-
-      item.addEventListener('click', () => {
-        provenance.goToNode(node.id);
-      });
-
-      pathContainer.appendChild(item);
-    }
-
-    updateButtons();
+  if (navigation) {
+    navigation.backButton.addEventListener('click', () => provenance.goBackOneStep());
+    navigation.forwardButton.addEventListener('click', () => provenance.goForwardOneStep());
+    container.appendChild(navigation.row);
   }
 
   function refresh(): void {
-    const path = provenance.getPathFromRoot();
-    renderPath(path);
+    if (toolbar) {
+      toolbar.toggleButton.textContent = graphVisible ? 'Hide Graph' : 'Show Graph';
+      toolbar.expandButton.textContent = modal.isOpen() ? 'Close Graph' : 'Open Graph';
+      toolbar.expandButton.disabled = !graphVisible;
+      toolbar.hint.textContent = modal.isOpen() ? 'Modal open: click nodes to jump state' : 'Click graph preview to open modal';
+      toolbar.hint.style.visibility = graphVisible ? 'visible' : 'hidden';
+    }
+    if (graphWrap) {
+      graphWrap.style.display = graphVisible ? 'block' : 'none';
+      if (graphVisible) renderGraphPreview({ container: graphWrap, provenance, showTimestamps });
+    }
+    if (pathContainer) renderPathList({ container: pathContainer, provenance, path: provenance.getPathFromRoot(), showTimestamps });
+    if (navigation) {
+      navigation.backButton.disabled = !provenance.canGoBack();
+      navigation.forwardButton.disabled = !provenance.canGoForward();
+    }
+    if (insights.isOpen()) renderInsightsPanel(insights.body, provenance);
+    if (modal.isOpen()) modal.render();
   }
 
-  const unsub = provenance.addObserver(() => {
-    refresh();
-  });
-
+  const unsubscribe = provenance.addObserver(() => refresh());
+  const handleKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape' && modal.isOpen()) { modal.close(); refresh(); } };
+  const handleResize = () => modal.isOpen() && modal.render();
+  document.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('resize', handleResize);
   refresh();
 
   return () => {
-    unsub();
+    unsubscribe();
+    document.removeEventListener('keydown', handleKeyDown);
+    window.removeEventListener('resize', handleResize);
+    modal.close();
     container.innerHTML = '';
-    container.classList.remove('autk-provenance-trail');
+    container.classList.remove('autk-provenance-root');
+    if (insightsContainer) insightsContainer.innerHTML = '';
   };
 }

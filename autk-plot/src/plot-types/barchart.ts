@@ -61,8 +61,8 @@ export class Barchart extends PlotD3 {
         });
         this.mapX = d3.scaleBand().domain(xDomain).range([0, width]).padding(0.25);
 
-        const yExtent = <[number, number]>d3.extent(this.data, (d) => d ? +d[this._axis[1]] || 0 : 0);
-        this.mapY = d3.scaleLinear().domain([0, yExtent[1]]).range([height, 0]);
+        const yExtent = <[number, number]>d3.extent(this.data, (d) => Number(d?.[this._axis[1]] ?? 0));
+        this.mapY = d3.scaleLinear().domain([0, yExtent[1] ?? 0]).range([height, 0]);
 
         // ---- Axes
         const xAxis = d3.axisBottom(this.mapX).tickSizeOuter(0);
@@ -135,8 +135,8 @@ export class Barchart extends PlotD3 {
                 const val = d ? d[this._axis[0]] : 'unknown';
                 return this.mapX(String(val)) || 0;
             })
-            .attr('y', (d) => this.mapY(d ? +d[this._axis[1]] || 0 : 0))
-            .attr('height', (d) => height - this.mapY(d ? +d[this._axis[1]] || 0 : 0))
+            .attr('y', (d) => this.mapY(Number(d?.[this._axis[1]] ?? 0)))
+            .attr('height', (d) => height - this.mapY(Number(d?.[this._axis[1]] ?? 0)))
             .attr('width', this.mapX.bandwidth())
             .style('fill', PlotStyle.default)
             .style('stroke', '#2f2f2f')
@@ -145,4 +145,60 @@ export class Barchart extends PlotD3 {
         this.configureSignalListeners();
     }
 
+    private memberIdsForRow(rowIndex: number): number[] {
+        const row = this.data[rowIndex];
+        const memberIds = row?.memberIds;
+        if (Array.isArray(memberIds)) {
+            return memberIds
+                .map((value) => Number(value))
+                .filter((value) => Number.isInteger(value) && value >= 0);
+        }
+        return [rowIndex];
+    }
+
+    clickEvent(): void {
+        const svgs = d3.select(this._div).selectAll('.autkMark');
+        const cls = d3.select(this._div).selectAll('.autkClear');
+        const plot = this;
+
+        svgs.each(function (_d, rowIdx: number) {
+            d3.select(this).on('click', function () {
+                const rowMemberIds = plot.memberIdsForRow(rowIdx);
+                const allSelected =
+                    rowMemberIds.length > 0 &&
+                    rowMemberIds.every((id) => plot.selection.includes(id));
+
+                if (allSelected) {
+                    plot.selection = plot.selection.filter((id) => !rowMemberIds.includes(id));
+                } else {
+                    plot.selection = [...new Set([...plot.selection, ...rowMemberIds])];
+                }
+
+                plot.plotEvents.emit(PlotEvent.CLICK, plot.selection);
+                plot.updatePlotSelection();
+            });
+        });
+
+        cls.on('click', function () {
+            plot.selection = [];
+            plot.plotEvents.emit(PlotEvent.CLICK, plot.selection);
+            plot.updatePlotSelection();
+        });
+    }
+
+    updatePlotSelection(): void {
+        const selectedSet = new Set(this.selection);
+        const plot = this;
+
+        d3.select(this._div)
+            .selectAll('.autkMark')
+            .style('fill', function (_d: unknown, rowIdx: number) {
+                const memberIds = plot.memberIdsForRow(rowIdx);
+                const fullySelected =
+                    memberIds.length > 0 &&
+                    memberIds.every((id) => selectedSet.has(id));
+
+                return fullySelected ? PlotStyle.highlight : PlotStyle.default;
+            });
+    }
 }

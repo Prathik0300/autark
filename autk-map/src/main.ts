@@ -20,6 +20,7 @@ import {
     ILayerInfo,
     ILayerRenderInfo,
     ILayerThematic,
+    MapViewState,
 } from './interfaces';
 
 import { Camera } from './camera';
@@ -72,6 +73,9 @@ export class AutkMap {
     /** The map events handler for map interactions */
     protected _mapEvents!: MapEvents;
 
+    /** Registered viewport change listeners */
+    private _viewListeners: Array<(state: MapViewState) => void> = [];
+
     /** The UI instance for managing the map's user interface */
     protected _ui!: AutkMapUi;
     /** The canvas element used for rendering the map */
@@ -91,7 +95,7 @@ export class AutkMap {
 
         this._keyEvents = new KeyEvents(this);
         this._mouseEvents = new MouseEvents(this);
-        this._mapEvents = new MapEvents([MapEvent.PICK]);
+        this._mapEvents = new MapEvents([MapEvent.PICK, MapEvent.VIEW]);
 
         this._ui = new AutkMapUi(this);
 
@@ -161,6 +165,27 @@ export class AutkMap {
         return this._ui;
     }
 
+
+    /** Registers a callback to be invoked whenever the camera viewport changes. */
+    public addViewListener(callback: (state: MapViewState) => void): void {
+        this._viewListeners.push(callback);
+    }
+
+    /** Removes a previously registered viewport change callback. */
+    public removeViewListener(callback: (state: MapViewState) => void): void {
+        this._viewListeners = this._viewListeners.filter(cb => cb !== callback);
+    }
+
+    /** Fires all registered viewport listeners with the current camera state. Called by MouseEvents. */
+    public emitViewChange(): void {
+        const state = this._camera.getViewState();
+        this._viewListeners.forEach(cb => cb(state));
+    }
+
+    /** Restores the camera to a previously captured viewport state. */
+    public setViewState(state: MapViewState): void {
+        this._camera.resetCamera(state.up, state.lookAt, state.eye);
+    }
 
     /**
      * Gets the origin of the map, which is the center of the bounding box.

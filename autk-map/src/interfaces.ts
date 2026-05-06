@@ -158,3 +158,13 @@ export interface ICameraData {
     eye: number[];
     lookAt: number[];
 }
+
+/**
+ * Serialisable snapshot of the camera viewport.
+ * Sufficient to fully restore the camera via resetCamera().
+ */
+export interface MapViewState {
+    eye: [number, number, number];
+    lookAt: [number, number, number];
+    up: [number, number, number];
+}
